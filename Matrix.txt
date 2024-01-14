@@ -1,0 +1,200 @@
+#include "Matrix.h"
+
+Matrix::Matrix(const Matrix& other) : rows(other.rows), cols(other.cols), data(other.data) {}
+Matrix::Matrix(int cols, int rows) :rows(rows), cols(cols), data(NULL) {};
+Matrix::Matrix(std::vector<std::vector<ComplexNum>> matr)
+{
+    data = matr;
+    rows = matr.size();
+    cols = matr[1].size();
+}
+
+Matrix::~Matrix() {}
+
+Matrix& Matrix::operator=(const Matrix& other) {
+    if (this != &other) {
+        rows = other.rows;
+        cols = other.cols;
+        data = other.data;
+    }
+    return *this;
+}
+
+Matrix Matrix::operator+(const Matrix& other) const {
+    if (rows != other.rows || cols != other.cols) {
+        return Matrix();
+    }
+
+    Matrix result(rows, cols);
+    for (int i = 0; i < rows; ++i) {
+        for (int j = 0; j < cols; ++j) {
+            result.data[i][j] = data[i][j] + other.data[i][j];
+        }
+    }
+
+    return result;
+}
+
+Matrix Matrix::operator-(const Matrix& other) const {
+    if (rows != other.rows || cols != other.cols) {
+        return Matrix(0, 0);
+    }
+
+    Matrix result(rows, cols);
+    for (int i = 0; i < rows; ++i) {
+        for (int j = 0; j < cols; ++j) {
+            result.data[i][j] = data[i][j] - other.data[i][j];
+        }
+    }
+
+    return result;
+}
+
+Matrix Matrix::operator*(double scalar) const {
+    Matrix result(rows, cols);
+    for (int i = 0; i < rows; ++i) {
+        for (int j = 0; j < cols; ++j) {
+            result.data[i][j] = data[i][j] * scalar;
+        }
+    }
+
+    return result;
+}
+
+Matrix Matrix::operator*(const Matrix& other) const {
+    strassen(this, other);
+}
+
+std::ostream& operator<<(std::ostream& os, const Matrix& matrix) {
+    for (int i = 0; i < matrix.rows; ++i) {
+        for (int j = 0; j < matrix.cols; ++j) {
+            os << matrix.data[i][j] << " ";
+        }
+        os << std::endl;
+    }
+    return os;
+}
+
+Matrix Matrix::transpose() const {
+    std::vector<std::vector<ComplexNum>> result;
+    std::vector<ComplexNum> temp;
+
+    for (int i = 0; i < cols; ++i) {
+
+        temp.clear();
+
+        for (int j = 0; j < rows; ++j) {
+            temp.push_back(this->data[i][j]);
+        }
+        result.push_back(temp);
+    }
+
+    return Matrix(result);
+}
+
+    Matrix Matrix::LinearRegression()
+    {
+        Matrix temp = Matrix::transpose();
+        temp = temp * this;
+        temp.Inverse();
+        temp = temp * Matrix::transpose();
+
+        return temp;
+    }
+
+Matrix Matrix::Inverse() const {
+    if (rows != cols) {
+        throw std::invalid_argument("Matrix must be square for inversion");
+    }
+
+    // Augment the matrix with the identity matrix
+    Matrix augmentedMatrix(rows, cols * 2);
+    for (int i = 0; i < rows; ++i) {
+        for (int j = 0; j < cols; ++j) {
+            augmentedMatrix.data[i][j] = data[i][j];
+            augmentedMatrix.data[i][j + cols] = (i == j) ? ComplexNum(1.0, 0.0) : ComplexNum(0.0, 0.0);
+        }
+    }
+
+    augmentedMatrix.reduceToReducedRowEchelonForm();
+
+    // Extract the right half of the augmented matrix as the inverse
+    Matrix inverseMatrix(rows, cols);
+    for (int i = 0; i < rows; ++i) {
+        for (int j = 0; j < cols; ++j) {
+            inverseMatrix.data[i][j] = augmentedMatrix.data[i][j + cols];
+        }
+    }
+
+    return inverseMatrix;
+}
+
+void Matrix::swapRows(int row1, int row2) {
+    std::swap(data[row1], data[row2]);
+}
+
+void Matrix::scaleRow(int row, double scale) {
+    for (int j = 0; j < cols; ++j) {
+        data[row][j] *= ComplexNum(scale, 0.0);
+    }
+}
+
+void Matrix::addScaledRow(int row1, int row2, double scale) {
+    for (int j = 0; j < cols; ++j) {
+        data[row1][j] += data[row2][j] * ComplexNum(scale, 0.0);
+    }
+}
+
+void Matrix::reduceToRowEchelonForm() {
+    int lead = 0;
+    for (int r = 0; r < rows; ++r) {
+        if (cols <= lead) {
+            break;
+        }
+
+        int i = r;
+        while (data[i][lead] == ComplexNum(0.0, 0.0)) {
+            ++i;
+            if (rows == i) {
+                i = r;
+                ++lead;
+                if (cols == lead) {
+                    break;
+                }
+            }
+        }
+
+        swapRows(i, r);
+        if (data[r][lead] != ComplexNum(0.0, 0.0)) {
+            scaleRow(r, 1.0 / data[r][lead].getA());
+        }
+
+        for (int i = 0; i < rows; ++i) {
+            if (i != r) {
+                addScaledRow(i, r, -data[i][lead].getA());
+            }
+        }
+
+        ++lead;
+    }
+}
+
+void Matrix::reduceToReducedRowEchelonForm() {
+    reduceToRowEchelonForm();
+
+    for (int r = rows - 1; r >= 0; --r) {
+        int lead = 0;
+        for (int c = 0; c < cols; ++c) {
+            if (data[r][c] == ComplexNum(1.0, 0.0)) {
+                lead = c;
+                break;
+            }
+        }
+
+        if (data[r][lead] != ComplexNum(0.0, 0.0)) {
+            for (int i = 0; i < r; ++i) {
+                addScaledRow(i, r, -data[i][lead].getA());
+            }
+        }
+    }
+}

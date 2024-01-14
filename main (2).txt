@@ -1,0 +1,38 @@
+#include <iostream>
+#include "Matrix.h"
+
+Matrix inputMAtrix() {
+	double a;
+	double b;
+	ComplexNum One = ComplexNum(1, 0);
+	int n;
+
+	std::cout << "Input number of points: ";
+	std::cin >> n;
+	std::cout << "Enter each number of complex number in format a+bi equals in input line a b(a and b are double)\n";
+
+	std::vector<std::vector< ComplexNum>> matr;
+	for (int i = 0; i < n; i++)
+	{
+		std::vector< ComplexNum> tempVector;
+		tempVector.clear();
+		tempVector.push_back(One);
+
+		for (int i = 0; i < 2; i++)
+		{
+			std::cin >> a >> b;
+			ComplexNum temp = ComplexNum(a, b);
+			tempVector.push_back(temp);
+		}
+		matr.push_back(tempVector);
+	}
+	Matrix res(matr);
+	return res;
+}
+
+int main()
+{
+	Matrix A = inputMAtrix();
+	Matrix regr = A.LinearRegression();
+	std::cout <<"\n" << regr;
+}
